@@ -8,6 +8,6 @@ export class ProductController {
     
     @Post()
     create(@Body() payload: CreateProductRequest) {
-        this.productService.create(payload);    
+        this.productService.processProductOnSale(payload.sale);    
     }
 }

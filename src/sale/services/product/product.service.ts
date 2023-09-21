@@ -4,141 +4,58 @@ import { CreateProductRequest } from 'src/sale/dtos/create-product-request.dto';
 import { CreateProductOnSaleEvent } from 'src/sale/events/create-product-on-sale.event';
 import { LoadProductOnSaleEvent } from 'src/sale/events/load-product-on-sale.event';
 import { TransformProductOnSaleEvent } from 'src/sale/events/transform-product-on-sale.event';
+import { firstValueFrom } from 'rxjs'
+import { ValidateProductOnSaleEvent } from 'src/sale/events/validate-product-on-sale.event';
 
 @Injectable()
 export class ProductService {
     private readonly logger = new Logger(ProductService.name);
-    isValid: boolean;
 
     constructor(
         @Inject('PERSISTENCE') private readonly persistenceClient: ClientProxy,
-        // @Inject('SANITIZER') private readonly dtoSanitizerClient: ClientProxy,
-        @Inject('DTO_VALIDATOR') private readonly dtoValidatorClient: ClientProxy,
-        @Inject('DTO_TO_MODEL') private readonly dtoToModelClient: ClientProxy,
-        // @Inject('WORKFLOW_SERIALIZER') private readonly workflowSerializerClient: ClientProxy,
-        @Inject('PRODUCT_MANAGEMENT_REGISTER') private readonly productManagementClient: ClientProxy,
-        @Inject('PRODUCT_ESHOP_LOADER') private readonly productEshopClient: ClientProxy
+        @Inject('VALIDATOR') private readonly validatorClient: ClientProxy,
+        @Inject('TRANSFORMER') private readonly transformerClient: ClientProxy,
+        @Inject('LOADER') private readonly shopLoaderClient: ClientProxy
     ) { }
 
-    async create(createProductRequest: CreateProductRequest) {
-        this.logger.log(`New product to load on store: ${createProductRequest}`);
-        const pattern = 'create_product';
-        try {
-            // const sanitizedPayload = await this.sanitize(pattern, 1, createProductRequest);
-            await this.validate(pattern, 2, createProductRequest.sale);
+    async processProductOnSale(request: CreateProductRequest) {
+        const processName = 'create_product';
+        const processCode = 2;
 
-            // const result = await this.validate(pattern, 2, createProductRequest.sale).then(
-            //     (onfulfilled) => {
-            //         this.logger.debug('validate then onfulfilled.');
-            //         this.logger.debug('2');
-            //         // this.dtoToModel(pattern, 3, createProductRequest.sale).then((dtoToModelResponse) => {
-            //         //     this.logger.debug(dtoToModelResponse);
-            //         //     this.loadProduct(pattern, 6, dtoToModelResponse).then(loadProductResponse => {
-            //         //         this.logger.debug('loadProduct then.');
-            //         //     });
-            //         // }); 
-            //     }, (onrejected) => this.logger.error('validate then onrejected.')
-            // );
-            // const customPayload = await this.workflowSerializer(pattern, 4, sanitizedPayload);
-            // await this.createProduct(pattern, 5, modelPayload);
+        try {
+            this.logger.log(`New product to load on store: ${JSON.stringify(request)}`);
+            const validatorResponse = await this.validate(processName, processCode, new ValidateProductOnSaleEvent(request));
+            if (validatorResponse.isValid) {
+                const transformerResponse = await this.transform(processName, processCode, new TransformProductOnSaleEvent(request));
+                await this.load(processName, processCode, new LoadProductOnSaleEvent(transformerResponse));
+            } else {
+                this.logger.error('Invalid productOnSale: ', validatorResponse);
+            }
         } catch (error) {
             const searchToken = Math.floor(Math.random() * 100000000000);
-            this.logger.error({
-                pattern,
-                searchToken,
-                createProductRequest
-            }, error);
-            this.persistenceClient.send('event', { processCode: 1, request: createProductRequest, response: error });
-            // await this.persistenceClient.send('event', { processCode: -1, request: { searchToken }, response: error });
+            this.logger.error({ pattern: processName, searchToken, createProductRequest: request }, error);
+            firstValueFrom(this.persistenceClient.emit('event', { processCode: 1, request: request, response: error }));
         }
     }
 
-    // private async sanitize(pattern: string, processCode: number, request: any) {
-    //     this.dtoSanitizerClient.send(pattern, new CreateProductEvent(request)).subscribe({
-    //         next: (response) => this.persistenceClient.send('event', { processCode, request, response }).subscribe(),
-    //         error: (error) => new Error(`Invalid payload at pattern: ${pattern}, processCode: ${processCode}`),
-    //         complete: () => this.logger.debug('sanitize complete')
-    //     });
-    //     return;
-    // }
-
-    private async validate(pattern: string, processCode: number, request: CreateProductOnSaleEvent) {
-        return this.dtoValidatorClient.send(pattern, request).subscribe({
-            next: (response) => {
-                this.logger.debug({ response, message: 'Validation response' });
-                this.persistenceClient.emit('event', { processCode, request, response }).subscribe({
-                    next: this.logger.log,
-                    error: this.logger.error,
-                    complete: () => this.logger.debug('Validation event persistence complete')
-                });
-                if (response.isValid) {
-                    this.dtoToModelClient.send(pattern, new TransformProductOnSaleEvent(request)).subscribe({
-                        next: (response) => {
-                            this.logger.debug({ response, message: 'Transform response' });
-                            this.persistenceClient.emit('event', { processCode, request, response }).subscribe({
-                                next: this.logger.log,
-                                error: this.logger.error,
-                                complete: () => this.logger.debug('Transform event persistence complete')
-                            });
-                            this.productEshopClient.send(pattern, new LoadProductOnSaleEvent(request)).subscribe({
-                                next: (response) => {
-                                    this.logger.debug({ response, message: 'Eshop load response' });
-                                    this.persistenceClient.emit('event', { processCode, request, response }).subscribe({
-                                        next: this.logger.log,
-                                        error: this.logger.error,
-                                        complete: () => this.logger.debug('Eshop load event persistence complete')
-                                    });
-                                },
-                                error: (error) => this.logger.error(error),
-                                complete: () => this.logger.debug('Eshop load complete')
-                            })
-                        },
-                        error: this.logger.error,
-                        complete: () => this.logger.debug('Transform complete')
-                    });
-                } else {
-                    this.logger.error(`Invalid payload at pattern: ${pattern}, processCode: ${processCode}`);
-                }
-            },
-            error: (error) => {
-                this.logger.debug(error, 'Validation error response');
-                this.persistenceClient.emit('event', { processCode, request, error }).subscribe({
-                    next: this.logger.log,
-                    error: this.logger.error,
-                    complete: () => this.logger.debug('Persistence complete')
-                });
-            },
-            complete: () => this.logger.debug('Validation complete')
-        });
-
+    private async validate(processName: string, processCode: number, request: ValidateProductOnSaleEvent) {
+        const validatorResponse = await firstValueFrom(this.validatorClient.send(processName, request));
+        this.logger.debug(`Validator response: ${JSON.stringify(validatorResponse)}`);
+        await firstValueFrom(this.persistenceClient.emit('event', { processCode, request, response: validatorResponse }));
+        return validatorResponse;
     }
 
-    private async dtoToModel(pattern: string, processCode: number, request: any) {
-        return await this.dtoToModelClient.send(pattern, new TransformProductOnSaleEvent(request)).subscribe({
-            next: this.logger.log,
-            error: this.logger.error,
-            complete: () => this.logger.debug('Transform complete')
-        });
-        // this.persistenceClient.emit('event', { processCode, request, response });
-        // return response;
+    private async transform(processName: string, processCode: number, request: TransformProductOnSaleEvent) {
+        const transformerResponse = await firstValueFrom(this.transformerClient.send(processName, request));
+        this.logger.debug(`Transformer response: ${JSON.stringify(transformerResponse)}`);
+        await firstValueFrom(this.persistenceClient.emit('event', { processCode, request, response: transformerResponse }));
+        return transformerResponse;
     }
 
-    // private async workflowSerializer(pattern: string, processCode: number, request: any) {
-    //     const response = await this.workflowSerializerClient.send(pattern, new CreateProductEvent(request));
-    //     await this.persistenceClient.send('event', { processCode, request, response });
-    // }
-
-    private async createProduct(pattern: string, processCode: number, request: any) {
-        const response = await this.productManagementClient.send(pattern, request);
-        await this.persistenceClient.emit('event', { processCode, request, response });
-    }
-
-    private async loadProduct(pattern: string, processCode: number, request: any) {
-        return this.productEshopClient.send(pattern, new LoadProductOnSaleEvent(request)).subscribe({
-            next: (response) => this.logger.log(response),
-            error: (error) => this.logger.error(error),
-            complete: () => this.logger.debug('Eshop load complete')
-        });
-        // await this.persistenceClient.emit('event', { processCode, request, response });
+    private async load(processName: string, processCode: number, request: LoadProductOnSaleEvent) {
+        const loadResponse = await firstValueFrom(this.shopLoaderClient.send(processName, request), { defaultValue: {} });
+        this.logger.debug(`Load response: ${JSON.stringify(loadResponse)}`);
+        await firstValueFrom(this.persistenceClient.emit('event', { processCode, request, response: loadResponse }));
+        return loadResponse;
     }
 }

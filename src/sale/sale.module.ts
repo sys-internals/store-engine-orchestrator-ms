@@ -17,12 +17,12 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         options: { port: 3001 }
       },
       {
-        name: 'DTO_VALIDATOR',
+        name: 'VALIDATOR',
         transport: Transport.TCP,
         options: { port: 3002 }
       },
       {
-        name: 'DTO_TO_MODEL',
+        name: 'TRANSFORMER',
         transport: Transport.TCP,
         options: { port: 3003 }
       },
@@ -37,7 +37,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         options: { port: 3005 }
       },
       {
-        name: 'PRODUCT_ESHOP_LOADER',
+        name: 'LOADER',
         transport: Transport.TCP,
         options: { port: 3006 }
       }

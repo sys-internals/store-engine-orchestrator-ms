@@ -1,5 +1,3 @@
-import { CreateProductRequest } from "../dtos/create-product-request.dto";
-
 export class CreateProductOnSaleEvent {
     constructor(event: any) {
         this.title = event.title;
