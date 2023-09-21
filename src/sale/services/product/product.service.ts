@@ -1,7 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { CreateProductRequest } from 'src/sale/dtos/create-product-request.dto';
-import { CreateProductOnSaleEvent } from 'src/sale/events/create-product-on-sale.event';
 import { LoadProductOnSaleEvent } from 'src/sale/events/load-product-on-sale.event';
 import { TransformProductOnSaleEvent } from 'src/sale/events/transform-product-on-sale.event';
 import { firstValueFrom } from 'rxjs'
@@ -18,6 +17,17 @@ export class ProductService {
         @Inject('LOADER') private readonly shopLoaderClient: ClientProxy
     ) { }
 
+    /**
+     * Process product on sale
+     * 
+     * @description this method is in charge of sending to different microservices the tasks of:
+     * - Validating the payload.
+     * - Transforming the payload to the specific microservice, adding any other properties it needs.
+     * - Loading the product to the customer shop database, which provides the shop web page.
+     * - Persisting every microservice event with their request and responses.
+     * 
+     * @param request CreateProductRequest object
+     */
     async processProductOnSale(request: CreateProductRequest) {
         const processName = 'create_product';
         const processCode = 2;
@@ -38,6 +48,15 @@ export class ProductService {
         }
     }
 
+    /**
+     * Validate product on sale
+     *
+     * @param processName Name of the process
+     * @param processCode Code of the process
+     * @param request ValidateProductOnSaleEvent object
+     *
+     * @returns ValidateProductOnSaleEvent object
+     */
     private async validate(processName: string, processCode: number, request: ValidateProductOnSaleEvent) {
         const validatorResponse = await firstValueFrom(this.validatorClient.send(processName, request));
         this.logger.debug(`Validator response: ${JSON.stringify(validatorResponse)}`);
@@ -45,6 +64,15 @@ export class ProductService {
         return validatorResponse;
     }
 
+    /**
+     * Transform product on sale
+     *
+     * @param processName Name of the process
+     * @param processCode Code of the process
+     * @param request TransformProductOnSaleEvent object
+     *
+     * @returns TransformProductOnSaleEvent object
+     */
     private async transform(processName: string, processCode: number, request: TransformProductOnSaleEvent) {
         const transformerResponse = await firstValueFrom(this.transformerClient.send(processName, request));
         this.logger.debug(`Transformer response: ${JSON.stringify(transformerResponse)}`);
@@ -52,6 +80,15 @@ export class ProductService {
         return transformerResponse;
     }
 
+    /**
+     * Load product on sale
+     *
+     * @param processName Name of the process
+     * @param processCode Code of the process
+     * @param request TransformProductOnSaleEvent object
+     *
+     * @returns TransformProductOnSaleEvent object
+     */
     private async load(processName: string, processCode: number, request: LoadProductOnSaleEvent) {
         const loadResponse = await firstValueFrom(this.shopLoaderClient.send(processName, request), { defaultValue: {} });
         this.logger.debug(`Load response: ${JSON.stringify(loadResponse)}`);
