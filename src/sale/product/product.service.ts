@@ -1,10 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { CreateProductRequest } from 'src/sale/dtos/create-product-request.dto';
-import { LoadProductOnSaleEvent } from 'src/sale/events/load-product-on-sale.event';
-import { TransformProductOnSaleEvent } from 'src/sale/events/transform-product-on-sale.event';
+import { CreateProductRequest } from 'src/sale/product/dtos/create-product-request.dto';
+import { LoadProductOnSaleEvent } from 'src/sale/product/events/load-product-on-sale.event';
+import { TransformProductOnSaleEvent } from 'src/sale/product/events/transform-product-on-sale.event';
 import { firstValueFrom } from 'rxjs'
-import { ValidateProductOnSaleEvent } from 'src/sale/events/validate-product-on-sale.event';
+import { ValidateProductOnSaleEvent } from 'src/sale/product/events/validate-product-on-sale.event';
 
 @Injectable()
 export class ProductService {
