@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: store-engine-orchestrator-ms-deployment
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: store-engine-orchestrator-ms
+  template:
+    metadata:
+      labels:
+        app: store-engine-orchestrator-ms
+    spec:
+      containers:
+        - name: store-engine-orchestrator-ms-container
+          image: store-engine-orchestrator-ms:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 2500
+          env:
+            - name: NODE_ENV
+              value: "production"

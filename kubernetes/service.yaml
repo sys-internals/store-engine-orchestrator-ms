@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: store-engine-orchestrator-ms-service
+spec:
+  selector:
+    app: store-engine-orchestrator-ms
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 2500
+  type: NodePort

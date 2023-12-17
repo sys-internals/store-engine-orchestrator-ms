@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: store-engine-orchestrator-ms-pod
+  labels:
+    app: store-engine-orchestrator-ms
+spec:
+  containers:
+  - name: store-engine-orchestrator-ms-container
+    image: store-engine-orchestrator-ms:latest
+    imagePullPolicy: IfNotPresent
+    ports:
+    - containerPort: 2500
+    env:
+    - name: NODE_ENV
+      value: "production"
