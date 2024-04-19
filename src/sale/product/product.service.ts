@@ -5,6 +5,7 @@ import { LoadProductOnSaleEvent } from 'src/sale/product/events/load-product-on-
 import { TransformProductOnSaleEvent } from 'src/sale/product/events/transform-product-on-sale.event';
 import { firstValueFrom } from 'rxjs'
 import { ValidateProductOnSaleEvent } from 'src/sale/product/events/validate-product-on-sale.event';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ProductService {
@@ -14,7 +15,8 @@ export class ProductService {
         @Inject('PERSISTENCE') private readonly persistenceClient: ClientProxy,
         @Inject('VALIDATOR') private readonly validatorClient: ClientProxy,
         @Inject('TRANSFORMER') private readonly transformerClient: ClientProxy,
-        @Inject('LOADER') private readonly shopLoaderClient: ClientProxy
+        @Inject('LOADER') private readonly shopLoaderClient: ClientProxy,
+        private readonly configService: ConfigService,
     ) { }
 
     /**
@@ -33,7 +35,6 @@ export class ProductService {
         const processCode = 2;
 
         try {
-            this.logger.log(`New product to load on store: ${JSON.stringify(request)}`);
             const validatorResponse = await this.validate(processName, processCode, new ValidateProductOnSaleEvent(request));
             if (validatorResponse.isValid) {
                 const transformerResponse = await this.transform(processName, processCode, new TransformProductOnSaleEvent(request));
@@ -61,6 +62,7 @@ export class ProductService {
         const validatorResponse = await firstValueFrom(this.validatorClient.send(processName, request));
         this.logger.debug(`Validator response: ${JSON.stringify(validatorResponse)}`);
         await firstValueFrom(this.persistenceClient.emit('event', { processCode, request, response: validatorResponse }));
+        this.logger.debug(`Validator persistence event sent`);
         return validatorResponse;
     }
 
@@ -77,6 +79,7 @@ export class ProductService {
         const transformerResponse = await firstValueFrom(this.transformerClient.send(processName, request));
         this.logger.debug(`Transformer response: ${JSON.stringify(transformerResponse)}`);
         await firstValueFrom(this.persistenceClient.emit('event', { processCode, request, response: transformerResponse }));
+        this.logger.debug(`Transformer persistence event sent`);
         return transformerResponse;
     }
 
@@ -93,6 +96,7 @@ export class ProductService {
         const loadResponse = await firstValueFrom(this.shopLoaderClient.send(processName, request), { defaultValue: {} });
         this.logger.debug(`Load response: ${JSON.stringify(loadResponse)}`);
         await firstValueFrom(this.persistenceClient.emit('event', { processCode, request, response: loadResponse }));
+        this.logger.debug(`Eshop Product Load persistence event sent`);
         return loadResponse;
     }
 }

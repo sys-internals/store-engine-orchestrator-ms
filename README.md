@@ -82,7 +82,7 @@ docker build -t store-engine-orchestrator-ms:latest -f Dockerfile .
 kubectl apply -f kubernetes/pod.yaml
 
 # Port-forward to access the Kubernetes pod locally
-kubectl port-forward store-engine-orchestrator-ms-pod 8080:2500
+kubectl port-forward store-engine-orchestrator-ms-pod 2500:2500
 ```
 
 ### Pod resource usage metrics

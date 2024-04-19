@@ -8,9 +8,19 @@ spec:
   containers:
   - name: store-engine-orchestrator-ms-container
     image: store-engine-orchestrator-ms:latest
-    imagePullPolicy: IfNotPresent
+    imagePullPolicy: Never
     ports:
     - containerPort: 2500
     env:
     - name: NODE_ENV
       value: "production"
+    - name: STORE_ENGINE_DTO_VALIDATOR_IP
+      valueFrom:
+        configMapKeyRef:
+          name: store-engine-configmap
+          key: STORE_ENGINE_DTO_VALIDATOR_IP
+    - name: STORE_ENGINE_PERSISTENCE_IP
+      valueFrom:
+        configMapKeyRef:
+          name: store-engine-configmap
+          key: STORE_ENGINE_PERSISTENCE_IP
