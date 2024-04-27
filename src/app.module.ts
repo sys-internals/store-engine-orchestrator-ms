@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { SaleModule } from './sale/sale.module';
 import { ManagementModule } from './management/management.module';
 import { ConfigModule } from '@nestjs/config';
 
@@ -10,7 +9,6 @@ import { ConfigModule } from '@nestjs/config';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    SaleModule,
     ManagementModule
   ],
   controllers: [AppController],

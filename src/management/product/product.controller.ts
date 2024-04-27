@@ -1,5 +1,5 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { CreateProductRequest } from 'src/sale/product/dtos/create-product-request.dto';
+import { CreateProductRequest } from 'src/management/product/dtos/create-product-request.dto';
 import { ProductService } from './product.service';
 
 @Controller('product')
@@ -8,6 +8,7 @@ export class ProductController {
     
     @Post()
     create(@Body() payload: CreateProductRequest) {
+        console.log(payload);
         this.productService.processProductOnSale(payload.sale);    
     }
 }
